@@ -1,0 +1,479 @@
+openapi: 3.0.0
+info:
+  version: 1.0.0+rev1
+  title: eFriends-CRM Integration eFriends-LUKAS
+  contact:
+    email: fritz@efriends.at
+    name: Fritz Dimmel
+    url: 'https://www.efriends.at'
+  description: |
+    # Integration des eFriends-Systems mit LUKAS CRM
+    ## Einführung
+    ### Datenformat
+    Als Datenformat der Datenübertragung wird JSON (mit UTF-8 Kodierung) vereinbart.
+
+    ### Datenübertragung
+    Die Nachrichten können entweder per Webservice (siehe Operationen unten) übertragen werden. Eine weitere Möglichkeit stellt die Möglichkeit der Übertragung von Dateien mit dem JSON-Inhalt in Austauschverzeichnisse dar (z.B. SFTP, SMB-Share). Dabei werden die Dateien jeweils vom Quellsystem in einen Zielordner kopiert. Sobald das Zielsystem die Datei verarbeitet hat, muss diese gelöscht werden (oder in einen anderen Ordner verschoben werden).
+    Alternativ kann auch ein File-Upload Formular via Benutzeroberfläche angeboten werden.
+
+    ### Synchrone Responses 
+    Synchrone Responses liefern **keine** vollständigen (upgedateten) Objekte zurück, sondern nur einen HTTP-Status und gegebenenfalls eine Id des neu angelegten Objekts, mit dem das Objekt in einer weiteren Operation - falls benötigt - abgerufen werden kann.
+
+    ## Authentifizierung
+    ### Web Service Schnittstelle
+    - Abgesichert durch Zugriffs-Einschränkung auf Quell/Ziel IP Adressen
+    - Site2Site Key oder HTTP-Basic Authentifizierung
+    - HTTPS
+    ### File Based Schnittstelle
+    - Abgesichert durch Zugriffs-Einschränkung auf Quell/Ziel IP Adressen
+    - SFTP User / Passwort bzw. SMB User / Passwort
+    
+servers:
+  - url: 'https://servicedev.reem.at'
+  - url: 'https://service.reem.at'
+  - url: 'https://crm:3000'
+  - url: 'http://localhost:8080'
+paths:
+  /efriendscrm/v001/PODBilling/:
+    put:
+        summary: Übertragen der geeichten Messwerte des Netzbetreibers an das CRM
+        description: |
+          ## Prozesse
+          eFriends erhält Daten der Netzbetreiber täglich, monatlich, jährlich, aber auch unterjährig (z.B. bei Zählertausch, Umzug, Kunden- oder Tarifwechsel)
+
+          ### Monatsabrechnung
+          Monatlich wird pro Zählpunkt ein Verbrauchswert übermittelt. Dieser Wert ist den eFriends-Messungen gegenüberzustellen, die im selben Zeitraum angefallen sind. 
+          Diese Werte (also der Netzbetreiber-Wert sowie die Abweichungen) sind in weiterer Folge auf der Rechnung anzudrucken.
+
+          ### Zwischenabrechnung
+          Bei einer Zwischenabrechnung muss auf Start- und Endezeitpunkt der Periode geachtet werden und diese Daten sind den eFriends-Messungen gegenübergestellt werden, die im selben Zeitraum angefallen sind.
+          Diese Werte (also der Netzbetreiber-Wert sowie die Abweichungen) sind in weiterer Folge auf der Rechnung anzudrucken.
+
+          ## Datenübertragung
+          - REST: Per REST Aufruf wird ein Request erstellt.
+          - File: Per Datei Upload werden entweder individuelle Dateien mit Einzelwerten (z.B. 1000 Zählpunkte = 1000 Files) übertragen. Im JSON ist dann nur ein einzelnes Object `{}` enthalten.
+                  Alternativ kann auch eine Sammeldatei übertragen werden. Dann wären mehrere Objekte in einem Array `[]` abgelegt. Darin enthalten sind dann die analogen Objekte wie im Fall der Einzeldateiübertragung.
+
+        tags: 
+          - eFriends → CRM
+        operationId: putPODBilling
+        parameters:
+          #- name: podId
+          #  in: path
+          #  description: unique identifier of the POD in the CRM system
+          #  required: true
+          #  schema:
+          #      type: string
+          #      example: 'AT1234567890000000'
+          #- name: cubeName
+          #  in: header
+          #  description: name of the cube
+          # required: true
+          #  schema:
+          #      type: string
+          #      example: 'P01_3010111'
+        requestBody:
+            description: POD Billing object
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/GridOpPODBilling'
+              application/xml:
+                schema:
+                  $ref: '#/components/schemas/GridOpPODBilling'
+            required: true
+        responses:
+          '200':
+            $ref: '#/components/responses/GeneralResponse'
+          '400':
+            $ref: '#/components/responses/BadRequest'
+          '401':
+            $ref: '#/components/responses/Unauthorized'
+          '404':
+            $ref: '#/components/responses/NotFound'
+          '5XX':
+            $ref: '#/components/responses/ServerError'
+
+  /efriendscrm/v001/EnergyCommunityBilling:
+    put:
+        summary: Übertragen der Messwerte des Netzbetreibers für Energiegemeinschaften und gemeinschaftliche Erzeugungsanlagen an das CRM
+        description: |
+          ## Prozesse
+          eFriends erhält Daten der Netzbetreiber täglich oder monatlich. Eine Übertragung an das CRM erfolgt monatlich.
+
+          ### Monatsabrechnung
+          Monatlich werden pro Zählpunkt ein Verbrauchswerte übermittelt. Die Summenwerte sind den eFriends-Messungen gegenüberzustellen, die im selben Zeitraum angefallen sind. 
+          Diese Werte (also die Netzbetreiber-Werte sowie die Abweichungen) sind in weiterer Folge auf der Rechnung anzudrucken.
+
+          ### Zwischenabrechnung
+          Bei einer Zwischenabrechnung muss auf Start- und Endezeitpunkt der Periode geachtet werden und diese Daten sind den eFriends-Messungen gegenübergestellt werden, die im selben Zeitraum angefallen sind.
+          Diese Werte (also der Netzbetreiber-Wert sowie die Abweichungen) sind in weiterer Folge auf der Rechnung anzudrucken.
+
+          ## Datenübertragung
+          - REST: Per REST Aufruf werden ein oder mehrere Requests erstellt (als Objekt oder Array of Objects) (PUT Request).
+          - File: Per Datei Upload werden entweder individuelle Dateien mit Einzelwerten (z.B. 1000 Zählpunkte = 1000 Files) übertragen. Im JSON ist dann nur ein einzelnes Object `{}` enthalten.
+                  Alternativ kann auch eine Sammeldatei übertragen werden. Dann wären mehrere Objekte in einem Array `[]` abgelegt. Darin enthalten sind dann die analogen Objekte wie im Fall der Einzeldateiübertragung.
+
+        tags: 
+          - eFriends → CRM
+        operationId: putEnergyCommunityBilling
+        #parameters:
+          #- name: podId
+          #  in: path
+          #  description: unique identifier of the POD in the CRM system
+          #  required: true
+          #  schema:
+          #      type: string
+          #      example: 'AT1234567890000000'
+          #- name: cubeName
+          #  in: header
+          #  description: name of the cube
+          # required: true
+          #  schema:
+          #      type: string
+          #      example: 'P01_3010111'
+        requestBody:
+          description: Array an Tages-Aggregaten für Energy Community Abrechnung
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnergyCommunityBillingExportMessage'
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/EnergyCommunityBillingExportMessage'
+          required: true
+        responses:
+          '200':
+            $ref: '#/components/responses/GeneralResponse'
+          '400':
+            $ref: '#/components/responses/BadRequest'
+          '401':
+            $ref: '#/components/responses/Unauthorized'
+          '404':
+            $ref: '#/components/responses/NotFound'
+          '5XX':
+            $ref: '#/components/responses/ServerError'
+
+components:
+  responses:
+    GeneralResponse:
+      description: Generic Response Object
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CreateResponse'
+          #example:
+          #  code: 200
+          #  id: '<generatedId>'
+    UploadSuccess:
+      description: Success
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/UploadResponse'
+          example:
+            code: 200
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: 400
+            message: 'Bad request'
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: 401
+            message: 'Unauthorized'
+    NotFound:
+      description: The specified resource was not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: 404
+            message: 'Not found'
+    ServerError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: 500
+            message: 'Internal Server Error'
+
+  schemas:
+
+    GridOpPODBilling:
+        type: object
+
+        properties:
+            pod: 
+                type: string
+                description: Zählpunkt
+                example: 'AT1234567890000000'
+            periodFrom:
+                type: string
+                format: date-time
+                description: Beginn des exportierten Zeitbereichs
+                example: "2021-04-01T00:00:00+02:00"
+            periodTo:
+                type: string
+                format: date-time
+                description: Ende des exportierten Zeitbereichs
+                example: "2021-05-01T00:00:00+02:00"
+            granularity:
+                type: string
+                description: Messperiode
+                example: 'month'
+            unit:
+                type: string
+                description: Messeinheit
+                example: 'WH'
+            amount:
+                type: number
+                description: Verbrauch in Wh
+                example: 217652
+            versionTime:
+                type: string
+                format: date-time
+                description: Versionszeitpunkt der Daten
+                example: "2021-05-02T11:47:23+02:00"    
+
+    EnergyCommunityBillingExportMessage:
+        description: |
+          Export Nachricht / Datei. Enthält ein Array für alle Zählpunkte mit allen Trading Details.
+          Pro Tag: eine Nachricht (00:00-24:00)
+        type: array
+        items:
+            $ref: "#/components/schemas/EnergyCommunityTradingExportObject"
+
+    EnergyCommunityTradingExportObject:
+        type: object
+        description: Trading Objekt für Energy Communitys
+        properties:
+            metadata:
+                $ref: "#/components/schemas/EnergyCommunityTradingPeriodMetadata"
+            #gridBilling:
+            #    $ref: "#/components/schemas/GridBilling"
+            outgoing:
+                properties:
+                    pods:
+                        type: object
+                        description: Named Objects Liste; additionalPropX entspricht jeweils einem POD (Zählpunkt)
+                        additionalProperties:
+                            $ref: "#/components/schemas/EnergyCommunityTrade"
+                    summary:
+                        type: object
+                        description: summ
+                        $ref: "#/components/schemas/OutgoingTradesSummary"
+            incoming:
+                properties:
+                    pods:
+                        type: object
+                        description: Named Objects Liste; additionalPropX entspricht jeweils einem POD (Zählpunkt)
+                        additionalProperties:
+                            $ref: "#/components/schemas/EnergyCommunityTrade"
+                    summary:
+                        type: object
+                        description: summ
+                        $ref: "#/components/schemas/IncomingTradesSummary"
+    EnergyCommunityTradingPeriodMetadata:
+        type: object
+        description: Contains metadata for the trading period
+        properties:
+            pod:
+                type: string
+                description: Zählpunkt
+                example: AT1234567890000000
+            nickName:
+                type: string
+                description: Nickname
+                example: Fritz Fantom
+            periodFrom:
+                type: string
+                format: date-time
+                description: Beginn des exportierten Zeitbereichs
+                example: "2021-04-01T00:00:00+02:00"
+            periodTo:
+                type: string
+                format: date-time
+                description: Ende des exportierten Zeitbereichs
+                example: "2021-05-01T00:00:00+02:00"
+            periodFromDataRange:
+                type: string
+                format: date-time
+                description: Erster Trade innerhalb des exportierten Zeitbereichs
+                example: "2021-04-10T00:00:00+02:00"
+            periodToDataRange:
+                type: string
+                format: date-time
+                description: Letzter Trade innerhalb des exportierten Zeitbereichs
+                example: "2021-05-01T00:00:00+02:00"
+            serviceSupplier:
+                type: string
+                description: Service Supplier Agreement (EC-Nummer)
+                example: AT112231
+
+    EnergyCommunityTrade:
+        type: object
+        properties:
+            pod:
+                type: string
+                description: Zählpunkt
+                example: AT1234567890000000
+            nickName:
+                type: string
+                description: Auf Rechnung anzudruckender Nickname
+                example: Biohof zum grünen Baum
+            consumed:
+                type: number
+                description: Tatsächlich konsumierte Menge an Energie in kWh
+                example: 2.475
+            consumable:
+                type: number
+                description: Über konsumierte Menge an Energie in hinaus angebotene Energie in kWh
+                example: 1.051
+            price:
+                type: number
+                description: Gesamtpreis Energie pro kWh in EUR netto
+                example: 0.052
+            priceDetail:
+                type: object
+                description: Preisbestandteile
+                properties:
+                    priceEnergy:
+                        type: number
+                        description: Ausgehandelter Energiepreis des Verkäufers
+                        example: 0.047
+                    priceRoaming:
+                        type: number
+                        description: Roaming-Aufschlag
+                        example: 0.005
+            #fromShare:
+            #    type: number
+            #    description: Menge an Energie, die aufgrund einer Kraftwerksbeteiligung nicht verrechnet (aber ausgewiesen) wird
+            #    example: 0
+            #notFromShare:
+            #    type: number
+            #    description: Menge an Energie, die außerhalb der Grundmenge einer Kraftwerksbeteiligung verwendet und daher verrechnet (und ausgewiesen) wird
+            #    example: 2.475
+            #unconsumed:
+            #    type: number
+            #    description: Menge an Energie, die aufgrund einer Kraftwerksbeteiligung zur Verfügung gestellt wurde, aber zum jeweiligen Zeitpunkt nicht verwendet werden konnte. Wird in weiterer Folge auf der Rechnung ausgewiesen als Reststromverkauf mit Mischpreis.
+            #    example: 0
+            serviceSupplier:
+                type: string
+                description: Service Supplier (EC Nummer)
+                example: AT112231
+    OutgoingTradesSummary:
+        type: object
+        properties:
+            toCommunity:
+                type: number
+                description: Summe der Menge an Energie, die direkt an die Community (andere PODs) verkauft werden konnte.
+                example: 6.998
+            toRetailer:
+                type: number
+                description: Summe der Menge an Energie, die an den Retailer verkauft wurde.
+                example: 0.263
+            shareable:
+                type: number
+                description: Summe der Menge an Energie, die der Community angeboten wurde, aber nicht abgenommen wurde.
+                example: 0.263
+            #toShares:
+            #    type: number
+            #    description: Summe der Menge an Energie, die aufgrund einer Kraftwerksbeteiligung an Beteiligte zugewiesen wurde.
+            #    example: 0
+            #notToShares:
+            #    type: number
+            #    description: Summe der Menge an Energie, die außerhalb einer Kraftwerksbeteiligung an Beteiligte verkauft wurde.
+            #    example: 6.998
+            #unconsumed:
+            #    type: number
+            #    description: Summe der Menge an Energie, die aufgrund einer Kraftwerksbeteiligung zur Verfügung gestellt wurde, aber zum jeweiligen Zeitpunkt nicht verwendet werden konnte.
+            #    example: 0
+
+    IncomingTradesSummary:
+        type: object
+        properties:
+            fromCommunity:
+                type: number
+                description: Summe der Menge an Energie, die direkt von der Community (andere PODs) gekauft werden konnte.
+                example: 14.656
+            fromRetailer:
+                type: number
+                description: Summe der Menge an Energie, die vom Retailer gekauft wurde.
+                example: 0.33
+            consumable:
+                type: number
+                description: Summe der Menge an Energie, die von der Community angeboten wurde, aber nicht abgenommen wurde.
+                example: 98.698
+            #fromShares:
+            #    type: number
+            #    description: Summe der Menge an Energie, die dem Cube aufgrund einer Kraftwerksbeteiligung zugewiesen wurde.
+            #    example: 0
+            #notFromShares:
+            #    type: number
+            #    description: Summe der Menge an Energie, die dem Cube außerhalb einer Kraftwerksbeteiligung verkauft wurde.
+            #    example: 14.656
+            #unconsumed:
+            #    type: number
+            #    description: Summe der Menge an Energie, die dem Cube aufgrund einer Kraftwerksbeteiligung zur Verfügung gestellt wurde, aber zum jeweiligen Zeitpunkt nicht verwendet werden konnte.
+            #    example: 0
+
+    CreateResponse:
+      type: object
+      #required:
+      #  - id
+      properties:
+        success:
+          type: boolean
+          description: information, whether operaion was successful
+          example: true
+        messages:
+          type: array
+          description: array of processed messages
+          items: 
+            $ref: "#/components/schemas/ResponseMessage"
+    ResponseMessage:
+      type: object
+      properties:
+        nr: 
+          type: integer
+          format: int32
+        message: 
+          type: string
+        message_type:
+          type: integer
+          format: int32
+          description: 1=success, 2=warning, 3=error
+    UploadResponse:
+      type: object
+      required:
+        - code
+      properties:
+        code:
+          type: integer
+          format: int32
+          example: 200
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
+          type: string

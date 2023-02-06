@@ -1,0 +1,565 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "version": "1.0.0+rev1",
+    "title": "eFriends-CRM Integration eFriends-LUKAS",
+    "contact": {
+      "email": "fritz@efriends.at",
+      "name": "Fritz Dimmel",
+      "url": "https://www.efriends.at"
+    },
+    "description": "# Integration des eFriends-Systems mit LUKAS CRM\n## Einführung\n### Datenformat\nAls Datenformat der Datenübertragung wird JSON (mit UTF-8 Kodierung) vereinbart.\n\n### Datenübertragung\nDie Nachrichten können entweder per Webservice (siehe Operationen unten) übertragen werden. Eine weitere Möglichkeit stellt die Möglichkeit der Übertragung von Dateien mit dem JSON-Inhalt in Austauschverzeichnisse dar (z.B. SFTP, SMB-Share). Dabei werden die Dateien jeweils vom Quellsystem in einen Zielordner kopiert. Sobald das Zielsystem die Datei verarbeitet hat, muss diese gelöscht werden (oder in einen anderen Ordner verschoben werden).\nAlternativ kann auch ein File-Upload Formular via Benutzeroberfläche angeboten werden.\n\n### Synchrone Responses \nSynchrone Responses liefern **keine** vollständigen (upgedateten) Objekte zurück, sondern nur einen HTTP-Status und gegebenenfalls eine Id des neu angelegten Objekts, mit dem das Objekt in einer weiteren Operation - falls benötigt - abgerufen werden kann.\n\n## Authentifizierung\n### Web Service Schnittstelle\n- Abgesichert durch Zugriffs-Einschränkung auf Quell/Ziel IP Adressen\n- Site2Site Key oder HTTP-Basic Authentifizierung\n- HTTPS\n### File Based Schnittstelle\n- Abgesichert durch Zugriffs-Einschränkung auf Quell/Ziel IP Adressen\n- SFTP User / Passwort bzw. SMB User / Passwort\n"
+  },
+  "servers": [
+    {
+      "url": "https://servicedev.reem.at/efriendscrm/v001/"
+    },
+    {
+      "url": "https://service.reem.at/efriendscrm/v001/"
+    }
+  ],
+  "paths": {
+    "/PODBilling/": {
+      "put": {
+        "summary": "Übertragen der geeichten Messwerte des Netzbetreibers an das CRM",
+        "description": "## Prozesse\neFriends erhält Daten der Netzbetreiber täglich, monatlich, jährlich, aber auch unterjährig (z.B. bei Zählertausch, Umzug, Kunden- oder Tarifwechsel)\n\n### Monatsabrechnung\nMonatlich wird pro Zählpunkt ein Verbrauchswert übermittelt. Dieser Wert ist den eFriends-Messungen gegenüberzustellen, die im selben Zeitraum angefallen sind. \nDiese Werte (also der Netzbetreiber-Wert sowie die Abweichungen) sind in weiterer Folge auf der Rechnung anzudrucken.\n\n### Zwischenabrechnung\nBei einer Zwischenabrechnung muss auf Start- und Endezeitpunkt der Periode geachtet werden und diese Daten sind den eFriends-Messungen gegenübergestellt werden, die im selben Zeitraum angefallen sind.\nDiese Werte (also der Netzbetreiber-Wert sowie die Abweichungen) sind in weiterer Folge auf der Rechnung anzudrucken.\n\n## Datenübertragung\n- REST: Per REST Aufruf wird ein Request erstellt.\n- File: Per Datei Upload werden entweder individuelle Dateien mit Einzelwerten (z.B. 1000 Zählpunkte = 1000 Files) übertragen. Im JSON ist dann nur ein einzelnes Object `{}` enthalten.\n        Alternativ kann auch eine Sammeldatei übertragen werden. Dann wären mehrere Objekte in einem Array `[]` abgelegt. Darin enthalten sind dann die analogen Objekte wie im Fall der Einzeldateiübertragung.\n",
+        "tags": [
+          "eFriends → CRM"
+        ],
+        "operationId": "putPODBilling",
+        "requestBody": {
+          "description": "POD Billing object",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GridOpPODBilling"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "$ref": "#/components/schemas/GridOpPODBilling"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/GeneralResponse"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/EnergyCommunityBilling": {
+      "put": {
+        "summary": "Übertragen der Messwerte des Netzbetreibers für Energiegemeinschaften und gemeinschaftliche Erzeugungsanlagen an das CRM",
+        "description": "## Prozesse\neFriends erhält Daten der Netzbetreiber täglich oder monatlich. Eine Übertragung an das CRM erfolgt monatlich.\n\n### Monatsabrechnung\nMonatlich werden pro Zählpunkt ein Verbrauchswerte übermittelt. Die Summenwerte sind den eFriends-Messungen gegenüberzustellen, die im selben Zeitraum angefallen sind. \nDiese Werte (also die Netzbetreiber-Werte sowie die Abweichungen) sind in weiterer Folge auf der Rechnung anzudrucken.\n\n### Zwischenabrechnung\nBei einer Zwischenabrechnung muss auf Start- und Endezeitpunkt der Periode geachtet werden und diese Daten sind den eFriends-Messungen gegenübergestellt werden, die im selben Zeitraum angefallen sind.\nDiese Werte (also der Netzbetreiber-Wert sowie die Abweichungen) sind in weiterer Folge auf der Rechnung anzudrucken.\n\n## Datenübertragung\n- REST: Per REST Aufruf werden ein oder mehrere Requests erstellt (als Objekt oder Array of Objects) (PUT Request).\n- File: Per Datei Upload werden entweder individuelle Dateien mit Einzelwerten (z.B. 1000 Zählpunkte = 1000 Files) übertragen. Im JSON ist dann nur ein einzelnes Object `{}` enthalten.\n        Alternativ kann auch eine Sammeldatei übertragen werden. Dann wären mehrere Objekte in einem Array `[]` abgelegt. Darin enthalten sind dann die analogen Objekte wie im Fall der Einzeldateiübertragung.\n",
+        "tags": [
+          "eFriends → CRM"
+        ],
+        "operationId": "putEnergyCommunityBilling",
+        "requestBody": {
+          "description": "Array an Tages-Aggregaten für Energy Community Abrechnung",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnergyCommunityBillingExportMessage"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "$ref": "#/components/schemas/EnergyCommunityBillingExportMessage"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/GeneralResponse"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },"/artikelflexpreis": {
+      "post": {
+        "security": [
+          {
+            "Bearer": []
+          },
+          {
+            "oAuthLukas": []
+          }
+        ],
+        "tags": [
+          "efmain"
+        ],
+        "summary": "Set price for consumers of that cube - cube of owner",
+        "description": "returns sonderpreis_aktuell and sonderpreis_next if successful",
+        "consumes": [
+          "application/x-www-form-urlencoded"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "Array of flex prices",
+            "description": "Set of flex prices to be set",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/efartikelflexpricerequest"
+            }
+            
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "operation successful",
+            "schema": {
+              "$ref": "#/definitions/artikel"
+            }
+          },
+          "400": {
+            "description": "operation failed",
+            "schema": {
+              "$ref": "#/definitions/GeneralResponse"
+            }
+          },
+          "404": {
+            "description": "Invalid username/password supplied",
+            "schema": {
+              "$ref": "#/definitions/GeneralResponse"
+            }
+          }
+        }
+      }
+  },
+  "components": {
+    "responses": {
+      "GeneralResponse": {
+        "description": "Generic Response Object",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/CreateResponse"
+            }
+          }
+        }
+      },
+      "UploadSuccess": {
+        "description": "Success",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/UploadResponse"
+            },
+            "example": {
+              "code": 200
+            }
+          }
+        }
+      },
+      "BadRequest": {
+        "description": "Bad request",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "code": 400,
+              "message": "Bad request"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Unauthorized",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "code": 401,
+              "message": "Unauthorized"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "The specified resource was not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "code": 404,
+              "message": "Not found"
+            }
+          }
+        }
+      },
+      "ServerError": {
+        "description": "Internal Server Error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "code": 500,
+              "message": "Internal Server Error"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "GridOpPODBilling": {
+        "type": "object",
+        "properties": {
+          "pod": {
+            "type": "string",
+            "description": "Zählpunkt",
+            "example": "AT1234567890000000"
+          },
+          "periodFrom": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Beginn des exportierten Zeitbereichs",
+            "example": "2021-04-01T00:00:00+02:00"
+          },
+          "periodTo": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Ende des exportierten Zeitbereichs",
+            "example": "2021-05-01T00:00:00+02:00"
+          },
+          "granularity": {
+            "type": "string",
+            "description": "Messperiode",
+            "example": "month"
+          },
+          "unit": {
+            "type": "string",
+            "description": "Messeinheit",
+            "example": "WH"
+          },
+          "amount": {
+            "type": "number",
+            "description": "Verbrauch in Wh",
+            "example": 217652
+          },
+          "versionTime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Versionszeitpunkt der Daten",
+            "example": "2021-05-02T11:47:23+02:00"
+          }
+        }
+      },
+      "EnergyCommunityBillingExportMessage": {
+        "description": "Export Nachricht / Datei. Enthält ein Array für alle Zählpunkte mit allen Trading Details.\nPro Tag: eine Nachricht (00:00-24:00)\n",
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/EnergyCommunityTradingExportObject"
+        }
+      },
+      "EnergyCommunityTradingExportObject": {
+        "type": "object",
+        "description": "Trading Objekt für Energy Communitys",
+        "properties": {
+          "metadata": {
+            "$ref": "#/components/schemas/EnergyCommunityTradingPeriodMetadata"
+          },
+          "outgoing": {
+            "properties": {
+              "pods": {
+                "type": "object",
+                "description": "Named Objects Liste; additionalPropX entspricht jeweils einem POD (Zählpunkt)",
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/EnergyCommunityTrade"
+                }
+              },
+              "summary": {
+                "type": "object",
+                "description": "summ",
+                "$ref": "#/components/schemas/OutgoingTradesSummary"
+              }
+            }
+          },
+          "incoming": {
+            "properties": {
+              "pods": {
+                "type": "object",
+                "description": "Named Objects Liste; additionalPropX entspricht jeweils einem POD (Zählpunkt)",
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/EnergyCommunityTrade"
+                }
+              },
+              "summary": {
+                "type": "object",
+                "description": "summ",
+                "$ref": "#/components/schemas/IncomingTradesSummary"
+              }
+            }
+          }
+        }
+      },
+      "EnergyCommunityTradingPeriodMetadata": {
+        "type": "object",
+        "description": "Contains metadata for the trading period",
+        "properties": {
+          "pod": {
+            "type": "string",
+            "description": "Zählpunkt",
+            "example": "AT1234567890000000"
+          },
+          "nickName": {
+            "type": "string",
+            "description": "Nickname",
+            "example": "Fritz Fantom"
+          },
+          "periodFrom": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Beginn des exportierten Zeitbereichs",
+            "example": "2021-04-01T00:00:00+02:00"
+          },
+          "periodTo": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Ende des exportierten Zeitbereichs",
+            "example": "2021-05-01T00:00:00+02:00"
+          },
+          "periodFromDataRange": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Erster Trade innerhalb des exportierten Zeitbereichs",
+            "example": "2021-04-10T00:00:00+02:00"
+          },
+          "periodToDataRange": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Letzter Trade innerhalb des exportierten Zeitbereichs",
+            "example": "2021-05-01T00:00:00+02:00"
+          },
+          "serviceSupplier": {
+            "type": "string",
+            "description": "Service Supplier Agreement (EC-Nummer)",
+            "example": "AT112231"
+          }
+        }
+      },
+      "EnergyCommunityTrade": {
+        "type": "object",
+        "properties": {
+          "pod": {
+            "type": "string",
+            "description": "Zählpunkt",
+            "example": "AT1234567890000000"
+          },
+          "nickName": {
+            "type": "string",
+            "description": "Auf Rechnung anzudruckender Nickname",
+            "example": "Biohof zum grünen Baum"
+          },
+          "consumed": {
+            "type": "number",
+            "description": "Tatsächlich konsumierte Menge an Energie in kWh",
+            "example": 2.475
+          },
+          "consumable": {
+            "type": "number",
+            "description": "Über konsumierte Menge an Energie in hinaus angebotene Energie in kWh",
+            "example": 1.051
+          },
+          "price": {
+            "type": "number",
+            "description": "Gesamtpreis Energie pro kWh in EUR netto",
+            "example": 0.052
+          },
+          "priceDetail": {
+            "type": "object",
+            "description": "Preisbestandteile",
+            "properties": {
+              "priceEnergy": {
+                "type": "number",
+                "description": "Ausgehandelter Energiepreis des Verkäufers",
+                "example": 0.047
+              },
+              "priceRoaming": {
+                "type": "number",
+                "description": "Roaming-Aufschlag",
+                "example": 0.005
+              }
+            }
+          },
+          "serviceSupplier": {
+            "type": "string",
+            "description": "Service Supplier (EC Nummer)",
+            "example": "AT112231"
+          }
+        }
+      },
+      "OutgoingTradesSummary": {
+        "type": "object",
+        "properties": {
+          "toCommunity": {
+            "type": "number",
+            "description": "Summe der Menge an Energie, die direkt an die Community (andere PODs) verkauft werden konnte.",
+            "example": 6.998
+          },
+          "toRetailer": {
+            "type": "number",
+            "description": "Summe der Menge an Energie, die an den Retailer verkauft wurde.",
+            "example": 0.263
+          },
+          "shareable": {
+            "type": "number",
+            "description": "Summe der Menge an Energie, die der Community angeboten wurde, aber nicht abgenommen wurde.",
+            "example": 0.263
+          }
+        }
+      },
+      "IncomingTradesSummary": {
+        "type": "object",
+        "properties": {
+          "fromCommunity": {
+            "type": "number",
+            "description": "Summe der Menge an Energie, die direkt von der Community (andere PODs) gekauft werden konnte.",
+            "example": 14.656
+          },
+          "fromRetailer": {
+            "type": "number",
+            "description": "Summe der Menge an Energie, die vom Retailer gekauft wurde.",
+            "example": 0.33
+          },
+          "consumable": {
+            "type": "number",
+            "description": "Summe der Menge an Energie, die von der Community angeboten wurde, aber nicht abgenommen wurde.",
+            "example": 98.698
+          }
+        }
+      },
+      "efartikelflexpricerequest": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/efartikelflexprice"
+        }
+      },
+      "efartikelflexprice": {
+        "type": "object",
+        "properties": {
+          "valid_from": {
+            "type": "string"
+          },
+          "valid_to": {
+            "type": "string"
+          },
+          "price_from_retailer_avg": {
+            "type": "number",
+            "format": "double"
+          },
+          "price_to_retailer_avg": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": {
+          "type": "string"
+        }
+      },
+      "CreateResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "information, whether operaion was successful",
+            "example": true
+          },
+          "messages": {
+            "type": "array",
+            "description": "array of processed messages",
+            "items": {
+              "$ref": "#/components/schemas/ResponseMessage"
+            }
+          }
+        }
+      },
+      "ResponseMessage": {
+        "type": "object",
+        "properties": {
+          "nr": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "type": "string"
+          },
+          "message_type": {
+            "type": "integer",
+            "format": "int32",
+            "description": "1=success, 2=warning, 3=error"
+          }
+        }
+      },
+      "UploadResponse": {
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "example": 200
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
